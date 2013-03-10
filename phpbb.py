@@ -5,7 +5,8 @@ from xml.sax.saxutils import escape
 def getHtml(url):
   """ get html from url """
   req = urllib2.Request(url)
-  req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
+  req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;' + 
+    'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
   resp = urllib2.urlopen(req)
   content = resp.read()
   return content
@@ -24,19 +25,25 @@ def getStructuredData(post):
   return {"id": postid, "author": author, "date": date, "content": content}
 
 def getAuthor(post):
+  """ get author from post """
   return post.find_all(href=re.compile("memberlist"))[-1].get_text()
 
 def getDate(post):
+  """ get unparsed data from post """
   regex = re.compile("[^\w\s:]")
-  return re.sub(regex, "", post.find("p", "author").get_text().split(getAuthor(post))[-1]).strip()
+  text = re.sub(regex, "", post.find("p", "author").get_text()
+  return text.split(getAuthor(post))[-1]).strip()
 
 def getPostId(post):
+  """ get id from post """
   return post.find("h3").find("a").get("href").strip("#")
 
 def getContent(post):
+  """ get content from post """
   return post.find("div", "content").get_text()
 
 def xmlify(sd):
+  """ transform a structured post object into xml """
   nodes = ["<post>"]
   for key in sd.keys():
     value = sd[key]
@@ -46,6 +53,7 @@ def xmlify(sd):
   return "\n".join(nodes)
 
 def getPostsFromPage(base, url):
+  """ from a single page with post, extract the posts structured """
   out = []
   fullurl = base + url.lstrip(".")
   html = getHtml(fullurl)
@@ -56,6 +64,7 @@ def getPostsFromPage(base, url):
   return out
 
 def getPagesFromTopic(base, url):
+  """ from the start page of a topic, get all the pages for that topic """
   out = [url]
   html = getHtml(base + url.lstrip("."))
   soup = BeautifulSoup(html)
