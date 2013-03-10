@@ -45,21 +45,31 @@ def xmlify(sd):
   nodes.append("</post>")
   return "\n".join(nodes)
 
-def getPostsFromPage(url):
-  xmlout = []
-  html = getHtml(url)
+def getPostsFromPage(base, url):
+  out = []
+  fullurl = base + url.lstrip(".")
+  html = getHtml(fullurl)
   posts = getPostDivs(html)
   for post in posts:
     structdate = getStructuredData(post)
-    xmlout.append(xmlify(structdate))
-  return "\n".join(xmlout)
+    out.append(structdate)
+  return out
 
-xml = ["<?xml version=\"1.0\"?>"]
-xml.append("<posts>")
-page_with_posts = "http://userbase.be/forum/viewtopic.php?f=77&t=35834"
-xml.append(getPostsFromPage(page_with_posts))
-xml.append("</posts>")
+def getPagesFromTopic(base, url):
+  out = [url]
+  html = getHtml(base + url.lstrip("."))
+  soup = BeautifulSoup(html)
+  hrefs = soup.find("div", "pagination").find_all("a")
+  for href in hrefs:
+    if "viewtopic.php" in href.get("href"):
+      out.append(href.get("href"))
+  return out
 
-fout = codecs.open("text.xml", "w", "utf-8")
-fout.write( "\n".join(xml) )
-fout.close()
+base_url = "http://userbase.be/forum"
+topics_from_forum = ["./viewtopic.php?f=77&t=35417"]
+for topic_url in topics_from_forum:
+	pages_with_topic = getPagesFromTopic(base_url, topic_url)
+	for page_url in pages_with_topic:
+		posts_from_page = getPostsFromPage(base_url, page_url)
+		print posts_from_page
+
