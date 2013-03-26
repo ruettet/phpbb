@@ -31,8 +31,8 @@ def getAuthor(post):
 def getDate(post):
   """ get unparsed data from post """
   regex = re.compile("[^\w\s:]")
-  text = re.sub(regex, "", post.find("p", "author").get_text()
-  return text.split(getAuthor(post))[-1]).strip()
+  text = re.sub(regex, "", post.find("p", "author").get_text())
+  return text.split(getAuthor(post))[-1].strip()
 
 def getPostId(post):
   """ get id from post """
@@ -74,8 +74,47 @@ def getPagesFromTopic(base, url):
       out.append(href.get("href"))
   return out
 
+def getTopicsFromForum(base, url):
+  """ go through the topic pages of a forum and then gather all the topics """
+  out = []
+  page_urls_in_forum = getPagesInForum(base, url)
+  for page_url in pages_in_forum:
+    topics = getTopicsFromForumPage(page_url)
+    out.extend(topics)
+
+def getTopicsFromForumPage(base, url):
+    """ from a single page with topics in a forum, get the topic links """
+    out = []
+    html = getHtml(base + url.lstrip("."))
+    soup = BeautifulSoup(html)
+    topicas = soup.find("a", "topictitle")
+    for topica in topicas:
+      out.append(topica.get("href"))
+    return out
+  
+def getPagesInForum(base, url):
+  """ from the start page in a forum, get the links to all the pages """
+  out = ["http://userbase.be/forum/viewtopic.php?f=77"]
+  html = getHtml(base + url.lstrip("."))
+  soup = BeautifulSoup(html)
+  hrefs = soup.find("div", "pagination").findall("a")
+  last_href = ""
+  for href in hrefs:
+    if "viewforum.php" in href.get("href"):
+      last_href = href.get("href")
+  # get start number from last_href
+  regex = re.compile("start=(\d+)")
+  final_start = int(regex.findall(last_href)[0])
+  extra_url = base + url.lstrip(".") + &amp;start="
+  extra_start = 50 # assume the increment is 50
+  while extra_start < final_start:
+    out.append(extra_url + str(extra_start))
+  out.append(extra_url + str(final_start))
+  return out
+
 base_url = "http://userbase.be/forum"
-topics_from_forum = ["./viewtopic.php?f=77&t=35417"]
+forum_url = "./viewforum.php?f=77"
+topics_from_forum = getTopicsFromForum(base_url, forum_url)
 for topic_url in topics_from_forum:
 	pages_with_topic = getPagesFromTopic(base_url, topic_url)
 	for page_url in pages_with_topic:
