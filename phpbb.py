@@ -1,3 +1,13 @@
+################################################################################
+# Script that scrapes a phpbb3 forum, assuming a three-layered depth:          #
+# give it the start of a forum, and it will fetch all subfora                  #
+# give it the start of a subforum, and it will fetch all the topics            #
+# give it the start of a topic, and it will fetch all the posts                #
+# TODO                                                                         #
+# - add forum and topic name to the structured post, or make sure it appears in#
+#   the xml                                                                    #
+################################################################################
+
 import urllib2, re, time, codecs
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
@@ -87,7 +97,7 @@ def getTopicsFromSubforum(base, url):
   """ go through the topic pages of a forum and then gather all the topics
       via the step of gathering all the pages in the subforum """
   out = []
-  page_urls_in_subforum = getPagesInSubforum(base, url)
+  page_urls_in_subforum = getPagesFromSubforum(base, url)
   for page_url in pages_in_subforum:
     topics = getTopicsFromSubforumPage(page_url)
     out.extend(topics)
@@ -116,7 +126,7 @@ def getPagesFromSubforum(base, url):
   # get start number from last_href
   regex = re.compile("start=(\d+)")
   final_start = int(regex.findall(last_href)[0])
-  extra_url = base + url.lstrip(".") + &amp;start="
+  extra_url = base + url.lstrip(".") + "&amp;start="
   extra_start = 50 # assume the increment is 50
   while extra_start < final_start:
     out.append(extra_url + str(extra_start))
@@ -131,7 +141,7 @@ def getPagesFromSubforum(base, url):
 
 base_url = "http://userbase.be/forum"
 subforum_url = "./viewforum.php?f=77"
-topics_from_subforum = getTopicsFromSubforum(base_url, forum_url)
+topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
 for topic_url in topics_from_forum:
   posts = getPostsFromTopic(base_url, topic_url)
 
