@@ -52,6 +52,14 @@ def xmlify(sd):
   nodes.append("</post>")
   return "\n".join(nodes)
 
+def getPostsFromTopic(base, url):
+  """ wrapper that will fetch all posts from a topic via a subroutine that
+      fetches all the pages for that topic """
+  pages_with_topic = getPagesFromTopic(base_url, topic_url)
+  for page_url in pages_with_topic:
+    posts_from_page = getPostsFromPage(base_url, page_url)
+  return posts_from_page
+
 def getPostsFromPage(base, url):
   """ from a single page with post, extract the posts structured """
   out = []
@@ -65,6 +73,7 @@ def getPostsFromPage(base, url):
 
 def getPagesFromTopic(base, url):
   """ from the start page of a topic, get all the pages for that topic """
+  # might need to be changed to look like getPagesFromForum
   out = [url]
   html = getHtml(base + url.lstrip("."))
   soup = BeautifulSoup(html)
@@ -74,16 +83,18 @@ def getPagesFromTopic(base, url):
       out.append(href.get("href"))
   return out
 
-def getTopicsFromForum(base, url):
-  """ go through the topic pages of a forum and then gather all the topics """
+def getTopicsFromSubforum(base, url):
+  """ go through the topic pages of a forum and then gather all the topics
+      via the step of gathering all the pages in the subforum """
   out = []
-  page_urls_in_forum = getPagesInForum(base, url)
-  for page_url in pages_in_forum:
-    topics = getTopicsFromForumPage(page_url)
+  page_urls_in_subforum = getPagesInSubforum(base, url)
+  for page_url in pages_in_subforum:
+    topics = getTopicsFromSubforumPage(page_url)
     out.extend(topics)
+  return out
 
-def getTopicsFromForumPage(base, url):
-    """ from a single page with topics in a forum, get the topic links """
+def getTopicsFromSubforumpage(base, url):
+    """ from a single page with topics in a subforum, get the topic links """
     out = []
     html = getHtml(base + url.lstrip("."))
     soup = BeautifulSoup(html)
@@ -92,9 +103,9 @@ def getTopicsFromForumPage(base, url):
       out.append(topica.get("href"))
     return out
   
-def getPagesInForum(base, url):
+def getPagesFromSubforum(base, url):
   """ from the start page in a forum, get the links to all the pages """
-  out = ["http://userbase.be/forum/viewtopic.php?f=77"]
+  out = [base + url.lstrip(".")]
   html = getHtml(base + url.lstrip("."))
   soup = BeautifulSoup(html)
   hrefs = soup.find("div", "pagination").findall("a")
@@ -112,12 +123,15 @@ def getPagesInForum(base, url):
   out.append(extra_url + str(final_start))
   return out
 
+# forums
+# (getTopicsFromSubforum)
+# |_ topics
+#    (getPostsFromTopic)
+#    |_ posts
+
 base_url = "http://userbase.be/forum"
-forum_url = "./viewforum.php?f=77"
-topics_from_forum = getTopicsFromForum(base_url, forum_url)
+subforum_url = "./viewforum.php?f=77"
+topics_from_subforum = getTopicsFromSubforum(base_url, forum_url)
 for topic_url in topics_from_forum:
-	pages_with_topic = getPagesFromTopic(base_url, topic_url)
-	for page_url in pages_with_topic:
-		posts_from_page = getPostsFromPage(base_url, page_url)
-		print posts_from_page
+  posts = getPostsFromTopic(base_url, topic_url)
 
