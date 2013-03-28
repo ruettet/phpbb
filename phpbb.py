@@ -13,7 +13,6 @@ from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
 def getHtml(url):
-  """ get html from url """
   req = urllib2.Request(url)
   req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;' + 
     'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
@@ -50,7 +49,10 @@ def getPostId(post):
 
 def getContent(post):
   """ get content from post """
-  return post.find("div", "content").get_text()
+  try:
+    return post.find("div", "content").get_text()
+  except AttributeError:
+    return "NA"
 
 def xmlify(sd):
   """ transform a structured post object into xml """
@@ -65,6 +67,7 @@ def xmlify(sd):
 def getPostsFromTopic(base, url):
   """ wrapper that will fetch all posts from a topic via a subroutine that
       fetches all the pages for that topic """
+  print "fetching posts from topic", base, url
   pages_with_topic = getPagesFromTopic(base_url, topic_url)
   for page_url in pages_with_topic:
     posts_from_page = getPostsFromPage(base_url, page_url)
@@ -96,10 +99,11 @@ def getPagesFromTopic(base, url):
 def getTopicsFromSubforum(base, url):
   """ go through the topic pages of a forum and then gather all the topics
       via the step of gathering all the pages in the subforum """
+  print "fetching the topics from subforum", base, url
   out = []
   page_urls_in_subforum = getPagesFromSubforum(base, url)
-  for page_url in pages_in_subforum:
-    topics = getTopicsFromSubforumPage(page_url)
+  for page_url in page_urls_in_subforum:
+    topics = getTopicsFromSubforumpage(base, page_url)
     out.extend(topics)
   return out
 
@@ -108,17 +112,17 @@ def getTopicsFromSubforumpage(base, url):
     out = []
     html = getHtml(base + url.lstrip("."))
     soup = BeautifulSoup(html)
-    topicas = soup.find("a", "topictitle")
+    topicas = soup.find_all("a", "topictitle")
     for topica in topicas:
       out.append(topica.get("href"))
     return out
   
 def getPagesFromSubforum(base, url):
   """ from the start page in a forum, get the links to all the pages """
-  out = [base + url.lstrip(".")]
+  out = [url.lstrip(".")]
   html = getHtml(base + url.lstrip("."))
   soup = BeautifulSoup(html)
-  hrefs = soup.find("div", "pagination").findall("a")
+  hrefs = soup.find("div", "pagination").find_all("a")
   last_href = ""
   for href in hrefs:
     if "viewforum.php" in href.get("href"):
@@ -126,10 +130,11 @@ def getPagesFromSubforum(base, url):
   # get start number from last_href
   regex = re.compile("start=(\d+)")
   final_start = int(regex.findall(last_href)[0])
-  extra_url = base + url.lstrip(".") + "&amp;start="
+  extra_url = url.lstrip(".") + "&start="
   extra_start = 50 # assume the increment is 50
   while extra_start < final_start:
     out.append(extra_url + str(extra_start))
+    extra_start += 50
   out.append(extra_url + str(final_start))
   return out
 
@@ -142,6 +147,8 @@ def getPagesFromSubforum(base, url):
 base_url = "http://userbase.be/forum"
 subforum_url = "./viewforum.php?f=77"
 topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
-for topic_url in topics_from_forum:
+for topic_url in topics_from_subforum[0:10]:
   posts = getPostsFromTopic(base_url, topic_url)
-
+  for post in posts:
+    print xmlify(post)
+    raw_input()
