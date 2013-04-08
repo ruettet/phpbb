@@ -1,11 +1,13 @@
 ################################################################################
-# Script that scrapes a phpbb3 forum, assuming a three-layered depth:          #
-# give it the start of a forum, and it will fetch all subfora                  #
-# give it the start of a subforum, and it will fetch all the topics            #
-# give it the start of a topic, and it will fetch all the posts                #
-# TODO                                                                         #
-# - add forum and topic name to the structured post, or make sure it appears in#
-#   the xml                                                                    #
+# Script that scrapes a phpbb3 forum, assuming a three-layered depth:          
+# give it the start of a forum, and it will fetch all subfora                  
+# give it the start of a subforum, and it will fetch all the topics            
+# give it the start of a topic, and it will fetch all the posts                
+# TODO
+# - get subfora from forum
+# - continuation: if the script stops, it has to restart at the position where
+#   it left off
+# - standoff the xml generation to a separate method
 ################################################################################
 
 import urllib2, re, time, codecs
@@ -22,20 +24,22 @@ def getHtml(url):
     'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
   resp = urllib2.urlopen(req)
   content = resp.read()
+  addURL(url)
   return content
 
-def xmlify(sd):
+def xmlify_post(sd):
   """ transform a structured post object into xml """
   nodes = ["\t<post>"]
   for key in sd.keys():
     value = sd[key]
     s = "\t\t<" + key + ">" + escape(value) + "</" + key + ">"
     nodes.append(s)
-  nodes.append("\t</post>")
+  nodes.append("\t</post>\n")
   return "\n".join(nodes)
 
 ################################################################################
-# DEAL WITH INDIVIDUAL POSTS                                                   # ################################################################################
+# DEAL WITH INDIVIDUAL POSTS                                                   #
+################################################################################
 
 def getPostDivs(html):
   """ get divs in html that contain individual posts """
@@ -156,15 +160,27 @@ def getPagesFromSubforum(base, url):
   out.append(extra_url + str(final_start))
   return out
 
+################################################################################
+# RETRIEVE SUBFORA FROM FORUM                                                  #
+################################################################################
+
+def getSubforaFromForum(url):
+  return ["./viewforum.php?f=77"]
+
+################################################################################
+# MAIN METHOD                                                                  #
+################################################################################
+
 def main():
   xml = "<posts>\n"
   base_url = "http://userbase.be/forum"
-  subforum_url = "./viewforum.php?f=77"
-  topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
-  for topic_url in topics_from_subforum[0:10]:
-    posts = getPostsFromTopic(base_url, topic_url)
-    for post in posts:
-     xml = xml + xmlify(post)
+  subfora_from_forum = getSubforaFromForum(base_url)
+  for subforum_url in subfora_from_forum:
+    topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
+    for topic_url in topics_from_subforum[0:10]:
+      posts = getPostsFromTopic(base_url, topic_url)
+      for post in posts:
+        xml = xml + xmlify_post(post)
   xml = xml + "<posts>"
   fout = codecs.open("out.xml", "w", "utf-8")
   fout.write(xml)
@@ -172,4 +188,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

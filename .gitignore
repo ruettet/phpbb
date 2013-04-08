@@ -1,2 +1,3 @@
 *.pyc
-out.xml
+*.xml
+visited_urls.txt
