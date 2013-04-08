@@ -181,19 +181,21 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-  xml = "<posts>\n"
+  i = 1
   base_url = "http://userbase.be/forum"
   subfora_from_forum = getSubforaFromForum(base_url)
   for subforum_url in subfora_from_forum:
+    xml = "<posts>\n"
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
       posts = getPostsFromTopic(base_url, topic_url)
       for post in posts:
         xml = xml + xmlify_post(post)
-  xml = xml + "<posts>"
-  fout = codecs.open("out.xml", "w", "utf-8")
-  fout.write(xml)
-  fout.close()
+    xml = xml + "<posts>"
+    fout = codecs.open(str(i) + ".xml", "w", "utf-8")
+    fout.write(xml)
+    fout.close()
+    i += 1
 
 if __name__ == "__main__":
     main()
