@@ -10,7 +10,7 @@
 # - standoff the xml generation to a separate method
 ################################################################################
 
-import urllib2, re, time, codecs
+import urllib2, re, time, codecs, hashlib
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
@@ -55,7 +55,7 @@ def getStructuredData(post, base, url, forum, topic):
     return {"id": postid, "author": author, "date": date, "content": content,
             "forumid": forum, "topicid": topic, "base": base, "forumurl": url}
   except:
-    print "error in fetching single post, probably nothing majorly wrong"
+    print "\t\terror in fetching single post, probably nothing majorly wrong"
     return {}
 
 def getAuthor(post):
@@ -86,7 +86,7 @@ def getContent(post):
 def getPostsFromTopic(base, url):
   """ wrapper that will fetch all posts from a topic via a subroutine that
       fetches all the pages for that topic """
-  print "fetching posts from topic", base, url
+  print "\tfetching posts from topic", base, url
   pages_with_topic = getPagesFromTopic(base, url)
   for page_url in pages_with_topic:
     posts_from_page = getPostsFromPage(base, url)
@@ -181,7 +181,6 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-  i = 1
   base_url = "http://userbase.be/forum"
   subfora_from_forum = getSubforaFromForum(base_url)
   for subforum_url in subfora_from_forum:
@@ -192,10 +191,11 @@ def main():
       for post in posts:
         xml = xml + xmlify_post(post)
     xml = xml + "<posts>"
-    fout = codecs.open(str(i) + ".xml", "w", "utf-8")
+    fname = hashlib.sha224(xml.encode("utf-8")).hexdigest()
+    print "\twriting to file:", fname
+    fout = codecs.open(fname + ".xml", "w", "utf-8")
     fout.write(xml)
     fout.close()
-    i += 1
 
 if __name__ == "__main__":
     main()
