@@ -24,7 +24,6 @@ def getHtml(url):
     'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
   resp = urllib2.urlopen(req)
   content = resp.read()
-  addURL(url)
   return content
 
 def xmlify_post(sd):
@@ -48,12 +47,16 @@ def getPostDivs(html):
 
 def getStructuredData(post, base, url, forum, topic):
   """ get postid, author, date and content from post html """
-  content = getContent(post)
-  postid = getPostId(post)
-  author = getAuthor(post)
-  date = getDate(post)
-  return {"id": postid, "author": author, "date": date, "content": content,
-          "forumid": forum, "topicid": topic, "base": base, "forumurl": url}
+  try:
+    content = getContent(post)
+    postid = getPostId(post)
+    author = getAuthor(post)
+    date = getDate(post)
+    return {"id": postid, "author": author, "date": date, "content": content,
+            "forumid": forum, "topicid": topic, "base": base, "forumurl": url}
+  except:
+    print "error in fetching single post, probably nothing majorly wrong"
+    return {}
 
 def getAuthor(post):
   """ get author from post """
@@ -165,7 +168,13 @@ def getPagesFromSubforum(base, url):
 ################################################################################
 
 def getSubforaFromForum(url):
-  return ["./viewforum.php?f=77"]
+  out = []
+  html = getHtml(url)
+  soup = BeautifulSoup(html)
+  hrefs = soup.find_all("a", "forumtitle")
+  for href in hrefs:
+    out.append(href.get("href"))
+  return out
 
 ################################################################################
 # MAIN METHOD                                                                  #
@@ -177,7 +186,7 @@ def main():
   subfora_from_forum = getSubforaFromForum(base_url)
   for subforum_url in subfora_from_forum:
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
-    for topic_url in topics_from_subforum[0:10]:
+    for topic_url in topics_from_subforum:
       posts = getPostsFromTopic(base_url, topic_url)
       for post in posts:
         xml = xml + xmlify_post(post)
