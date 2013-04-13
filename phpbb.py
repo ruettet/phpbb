@@ -108,8 +108,8 @@ def getPostsFromTopic(base, url):
 def getPostsFromPage(base, url):
   """ from a single page with post, extract the posts structured """
   out = []
-  forum = re.compile("f=(\d.+?)&").findall(url)[0]
-  topic = re.compile("t=(\d.+?)&").findall(url)[0]
+  forum = re.compile("f=(\d+?)&").findall(url)[0]
+  topic = re.compile("t=(\d+?)&").findall(url)[0]
   fullurl = base + url.lstrip(".")
   html = getHtml(fullurl)
   posts = getPostDivs(html)
@@ -167,13 +167,17 @@ def getPagesFromSubforum(base, url):
       last_href = href.get("href")
   # get start number from last_href
   regex = re.compile("start=(\d+)")
-  final_start = int(regex.findall(last_href)[0])
+  try:
+    final_start = int(regex.findall(last_href)[0])
+  except IndexError:
+    final_start = -1
   extra_url = url.lstrip(".") + "&start="
   extra_start = 50 # assume the increment is 50
   while extra_start < final_start:
     out.append(extra_url + str(extra_start))
     extra_start += 50
-  out.append(extra_url + str(final_start))
+  if final_start > 0:
+    out.append(extra_url + str(final_start))
   return out
 
 ################################################################################
@@ -194,7 +198,10 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-  base_url = "http://userbase.be/forum"
+#  base_url = "http://userbase.be/forum"
+#  base_url = "http://forum.phpbbservice.nl/"
+#  base_url = "https://forum.www.trosradar.nl/"
+  base_url = "http://www.twenot-forums.nl/"
   foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
   try:
     os.mkdir("./" + foldername)
