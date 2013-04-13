@@ -10,7 +10,7 @@
 # - standoff the xml generation to a separate method
 ################################################################################
 
-import urllib2, re, time, codecs, hashlib, os
+import urllib2, re, time, codecs, hashlib, os, httplib
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
@@ -19,12 +19,22 @@ from xml.sax.saxutils import escape
 ################################################################################
 
 def getHtml(url):
-  req = urllib2.Request(url)
-  req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;' + 
-    'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
-  resp = urllib2.urlopen(req)
-  content = resp.read()
-  return content
+  try:
+    req = urllib2.Request(url)
+    req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;'+
+      'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
+    resp = urllib2.urlopen(req)
+    content = resp.read()
+    return content
+  except urllib2.URLError:
+    return getHtmlS(url)
+
+def getHtmlS(url):
+  c = httplib.HTTPSConnection(url)
+  c.request("GET", "/")
+  response = c.getresponse()
+  data = response.read()
+  return data
 
 def xmlify_post(sd):
   """ transform a structured post object into xml """
@@ -198,10 +208,10 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-#  base_url = "http://userbase.be/forum"
+  base_url = "http://userbase.be/forum"
 #  base_url = "http://forum.phpbbservice.nl/"
-#  base_url = "https://forum.www.trosradar.nl/"
-  base_url = "http://www.twenot-forums.nl/"
+#  base_url = "https://forum.www.trosradar.nl/" # not working, https
+#  base_url = "http://www.twenot-forums.nl/"
   foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
   try:
     os.mkdir("./" + foldername)
