@@ -10,7 +10,7 @@
 # - standoff the xml generation to a separate method
 ################################################################################
 
-import urllib2, re, time, codecs, hashlib
+import urllib2, re, time, codecs, hashlib, os
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
@@ -35,6 +35,19 @@ def xmlify_post(sd):
     nodes.append(s)
   nodes.append("\t</post>\n")
   return "\n".join(nodes)
+
+def writeOut(posts, foldername):
+  """ write out a portion of the posts to a file """
+  xml = "<posts>\n"
+  for post in posts:
+    xml = xml + xmlify_post(post)
+  xml = xml + "</posts>"
+  fname = hashlib.sha224(xml.encode("utf-8")).hexdigest()
+  print "\twriting to file:", foldername + "/" + fname
+  fout = codecs.open("./" + foldername + "/" + fname + ".xml", "w", "utf-8")
+  fout.write(xml)
+  fout.close()
+
 
 ################################################################################
 # DEAL WITH INDIVIDUAL POSTS                                                   #
@@ -86,7 +99,7 @@ def getContent(post):
 def getPostsFromTopic(base, url):
   """ wrapper that will fetch all posts from a topic via a subroutine that
       fetches all the pages for that topic """
-  print "\tfetching posts from topic", base, url
+  print "\tfetching posts from topic", url
   pages_with_topic = getPagesFromTopic(base, url)
   for page_url in pages_with_topic:
     posts_from_page = getPostsFromPage(base, url)
@@ -124,7 +137,7 @@ def getPagesFromTopic(base, url):
 def getTopicsFromSubforum(base, url):
   """ go through the topic pages of a forum and then gather all the topics
       via the step of gathering all the pages in the subforum """
-  print "fetching the topics from subforum", base, url
+  print "fetching the topics from subforum", url
   out = []
   page_urls_in_subforum = getPagesFromSubforum(base, url)
   for page_url in page_urls_in_subforum:
@@ -182,20 +195,21 @@ def getSubforaFromForum(url):
 
 def main():
   base_url = "http://userbase.be/forum"
+  foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
+  try:
+    os.mkdir("./" + foldername)
+  except OSError:
+    print "foldername for this forum exists already"
   subfora_from_forum = getSubforaFromForum(base_url)
+  posts = []
   for subforum_url in subfora_from_forum:
-    xml = "<posts>\n"
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
-      posts = getPostsFromTopic(base_url, topic_url)
-      for post in posts:
-        xml = xml + xmlify_post(post)
-    xml = xml + "<posts>"
-    fname = hashlib.sha224(xml.encode("utf-8")).hexdigest()
-    print "\twriting to file:", fname
-    fout = codecs.open(fname + ".xml", "w", "utf-8")
-    fout.write(xml)
-    fout.close()
+      posts.extend(getPostsFromTopic(base_url, topic_url))
+      if len(posts) >= 1000:
+        writeOut(posts, foldername)
+        posts = []
+    writeOut(posts, foldername)
 
 if __name__ == "__main__":
     main()
