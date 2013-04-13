@@ -19,22 +19,12 @@ from xml.sax.saxutils import escape
 ################################################################################
 
 def getHtml(url):
-  try:
-    req = urllib2.Request(url)
-    req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;'+
-      'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
-    resp = urllib2.urlopen(req)
-    content = resp.read()
-    return content
-  except urllib2.URLError:
-    return getHtmlS(url)
-
-def getHtmlS(url):
-  c = httplib.HTTPSConnection(url)
-  c.request("GET", "/")
-  response = c.getresponse()
-  data = response.read()
-  return data
+  req = urllib2.Request(url)
+  req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;'+
+    'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
+  resp = urllib2.urlopen(req)
+  content = resp.read()
+  return content
 
 def xmlify_post(sd):
   """ transform a structured post object into xml """
