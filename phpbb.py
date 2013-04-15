@@ -139,7 +139,7 @@ def getPostsFromPage(base, url):
       for key in profiledata.keys():
         structdata[key] = profiledata[key]
     except KeyError:
-      print "no profile information for post"
+      print "\t\tno profile information for post"
     out.append(structdata)
   return out
 
