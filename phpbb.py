@@ -65,11 +65,30 @@ def getStructuredData(post, base, url, forum, topic):
     postid = getPostId(post)
     author = getAuthor(post)
     date = getDate(post)
-    return {"id": postid, "author": author, "date": date, "content": content,
+    out = {"id": postid, "author": author, "date": date, "content": content,
             "forumid": forum, "topicid": topic, "base": base, "forumurl": url}
+    return out
   except:
     print "\t\terror in fetching single post, probably nothing majorly wrong"
     return {}
+
+def getProfileData(html, pid):
+  """ get author profile data for post """
+  out = {}
+  soup = BeautifulSoup(html)
+  pdataraw = soup.find("dl", attrs={"class": "postprofile", 
+                                    "id": "profile" + pid.lstrip("p")})
+  dds = pdataraw.find_all("dd")
+  for dd in dds:
+    try:
+      regexkey = re.compile("<strong>(.+)</strong>")
+      regexvalue = re.compile("</strong>(.+)</dd>")
+      key = regexkey.findall(unicode(dd))[0].strip().rstrip(":").lower()
+      value = regexvalue.findall(unicode(dd))[0].strip()
+      out[key] = value
+    except IndexError:
+      continue
+  return out
 
 def getAuthor(post):
   """ get author from post """
@@ -114,8 +133,14 @@ def getPostsFromPage(base, url):
   html = getHtml(fullurl)
   posts = getPostDivs(html)
   for post in posts:
-    structdate = getStructuredData(post, base, url, forum, topic)
-    out.append(structdate)
+    structdata = getStructuredData(post, base, url, forum, topic)
+    try:
+      profiledata = getProfileData(html, structdata["id"])
+      for key in profiledata.keys():
+        structdata[key] = profiledata[key]
+    except KeyError:
+      print "no profile information for post"
+    out.append(structdata)
   return out
 
 def getPagesFromTopic(base, url):
@@ -160,7 +185,10 @@ def getPagesFromSubforum(base, url):
   out = [url.lstrip(".")]
   html = getHtml(base + url.lstrip("."))
   soup = BeautifulSoup(html)
-  hrefs = soup.find("div", "pagination").find_all("a")
+  try:
+    hrefs = soup.find("div", "pagination").find_all("a")
+  except:
+    hrefs = []
   last_href = ""
   for href in hrefs:
     if "viewforum.php" in href.get("href"):
@@ -169,7 +197,7 @@ def getPagesFromSubforum(base, url):
   regex = re.compile("start=(\d+)")
   try:
     final_start = int(regex.findall(last_href)[0])
-  except IndexError:
+  except:
     final_start = -1
   extra_url = url.lstrip(".") + "&start="
   extra_start = 50 # assume the increment is 50
@@ -213,7 +241,7 @@ def main():
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
       posts.extend(getPostsFromTopic(base_url, topic_url))
-      if len(posts) >= 1000:
+      if len(posts) >= 5:
         writeOut(posts, foldername)
         posts = []
     writeOut(posts, foldername)
