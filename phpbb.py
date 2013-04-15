@@ -241,7 +241,7 @@ def main():
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
       posts.extend(getPostsFromTopic(base_url, topic_url))
-      if len(posts) >= 5:
+      if len(posts) >= 5000:
         writeOut(posts, foldername)
         posts = []
     writeOut(posts, foldername)
