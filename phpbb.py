@@ -10,7 +10,7 @@
 # - standoff the xml generation to a separate method
 ################################################################################
 
-import urllib2, re, time, codecs, hashlib, os, httplib
+import urllib2, re, time, codecs, hashlib, os, httplib, glob
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
@@ -48,6 +48,16 @@ def writeOut(posts, foldername):
   fout.write(xml)
   fout.close()
 
+def getDownloadedTopicUrls(foldername):
+  fl = glob.glob("./" + foldername + "/*.xml")
+  regex = re.compile("<url>(.+?)</url>")
+  out = []
+  for f in fl:
+    fin = codecs.open(f, "r", "utf-8")
+    xml = fin.read()
+    fin.close()
+    out.extend(regex.findall(xml))
+  return out
 
 ################################################################################
 # DEAL WITH INDIVIDUAL POSTS                                                   #
@@ -66,7 +76,7 @@ def getStructuredData(post, base, url, forum, topic):
     author = getAuthor(post)
     date = getDate(post)
     out = {"id": postid, "author": author, "date": date, "content": content,
-            "forumid": forum, "topicid": topic, "base": base, "forumurl": url}
+            "forumid": forum, "topicid": topic, "base": base, "url": url}
     return out
   except:
     print "\t\terror in fetching single post, probably nothing majorly wrong"
@@ -120,9 +130,12 @@ def getPostsFromTopic(base, url):
       fetches all the pages for that topic """
   print "\tfetching posts from topic", url
   pages_with_topic = getPagesFromTopic(base, url)
+  posts = []
   for page_url in pages_with_topic:
-    posts_from_page = getPostsFromPage(base, url)
-  return posts_from_page
+    print "\t\tdeeper in the structure:", page_url
+    posts_from_page = getPostsFromPage(base, page_url)
+    posts.extend(posts_from_page)
+  return posts
 
 def getPostsFromPage(base, url):
   """ from a single page with post, extract the posts structured """
@@ -151,8 +164,21 @@ def getPagesFromTopic(base, url):
   soup = BeautifulSoup(html)
   hrefs = soup.find("div", "pagination").find_all("a")
   for href in hrefs:
-    if "viewtopic.php" in href.get("href"):
-      out.append(href.get("href"))
+    if url in href.get("href"):
+      last_href = href.get("href")
+  # get start number from last_href
+  regex = re.compile("start=(\d+)")
+  try:
+    final_start = int(regex.findall(last_href)[0])
+  except:
+    final_start = -1
+  extra_url = url + "&start="
+  extra_start = 20 # assume the increment is 20
+  while extra_start < final_start:
+    out.append(extra_url + str(extra_start))
+    extra_start += 20
+  if final_start > 0:
+    out.append(extra_url + str(final_start))
   return out
 
 ################################################################################
@@ -166,6 +192,7 @@ def getTopicsFromSubforum(base, url):
   out = []
   page_urls_in_subforum = getPagesFromSubforum(base, url)
   for page_url in page_urls_in_subforum:
+    print "\tconsidering page:", page_url
     topics = getTopicsFromSubforumpage(base, page_url)
     out.extend(topics)
   return out
@@ -199,11 +226,11 @@ def getPagesFromSubforum(base, url):
     final_start = int(regex.findall(last_href)[0])
   except:
     final_start = -1
-  extra_url = url.lstrip(".") + "&start="
-  extra_start = 50 # assume the increment is 50
+  extra_url = url + "&start="
+  extra_start = 20 # assume the increment is 20
   while extra_start < final_start:
     out.append(extra_url + str(extra_start))
-    extra_start += 50
+    extra_start += 20
   if final_start > 0:
     out.append(extra_url + str(final_start))
   return out
@@ -231,19 +258,24 @@ def main():
 #  base_url = "https://forum.www.trosradar.nl/" # not working, https
 #  base_url = "http://www.twenot-forums.nl/"
   foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
+  downloaded = []
   try:
     os.mkdir("./" + foldername)
   except OSError:
     print "foldername for this forum exists already"
+    downloaded = getDownloadedTopicUrls(foldername)
   subfora_from_forum = getSubforaFromForum(base_url)
   posts = []
   for subforum_url in subfora_from_forum:
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
-      posts.extend(getPostsFromTopic(base_url, topic_url))
-      if len(posts) >= 5000:
-        writeOut(posts, foldername)
-        posts = []
+      if topic_url not in downloaded:
+        posts.extend(getPostsFromTopic(base_url, topic_url))
+        if len(posts) >= 500:
+          writeOut(posts, foldername)
+          posts = []
+      if topic_url in downloaded:
+        print "ignoring", topic_url, "because it is already scraped"
     writeOut(posts, foldername)
 
 if __name__ == "__main__":
