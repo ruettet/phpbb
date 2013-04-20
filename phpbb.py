@@ -10,7 +10,7 @@
 # - standoff the xml generation to a separate method
 ################################################################################
 
-import urllib2, re, time, codecs, hashlib, os, httplib, glob
+import urllib2, re, time, codecs, hashlib, os, httplib, glob, cgi
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
 
@@ -48,16 +48,16 @@ def writeOut(posts, foldername):
   fout.write(xml)
   fout.close()
 
-def getDownloadedTopicUrls(foldername):
+def getDownloadedTopicIDs(foldername):
   fl = glob.glob("./" + foldername + "/*.xml")
-  regex = re.compile("<url>(.+?)</url>")
+  regex = re.compile("<topicid>(.+?)</topicid>")
   out = []
   for f in fl:
     fin = codecs.open(f, "r", "utf-8")
     xml = fin.read()
     fin.close()
     out.extend(regex.findall(xml))
-  return out
+  return list(set(out))
 
 ################################################################################
 # DEAL WITH INDIVIDUAL POSTS                                                   #
@@ -132,7 +132,6 @@ def getPostsFromTopic(base, url):
   pages_with_topic = getPagesFromTopic(base, url)
   posts = []
   for page_url in pages_with_topic:
-    print "\t\tdeeper in the structure:", page_url
     posts_from_page = getPostsFromPage(base, page_url)
     posts.extend(posts_from_page)
   return posts
@@ -192,7 +191,6 @@ def getTopicsFromSubforum(base, url):
   out = []
   page_urls_in_subforum = getPagesFromSubforum(base, url)
   for page_url in page_urls_in_subforum:
-    print "\tconsidering page:", page_url
     topics = getTopicsFromSubforumpage(base, page_url)
     out.extend(topics)
   return out
@@ -263,19 +261,19 @@ def main():
     os.mkdir("./" + foldername)
   except OSError:
     print "foldername for this forum exists already"
-    downloaded = getDownloadedTopicUrls(foldername)
+    downloaded = getDownloadedTopicIDs(foldername)
   subfora_from_forum = getSubforaFromForum(base_url)
   posts = []
   for subforum_url in subfora_from_forum:
     topics_from_subforum = getTopicsFromSubforum(base_url, subforum_url)
     for topic_url in topics_from_subforum:
-      if topic_url not in downloaded:
+      regex = re.compile("t=(\d+?)&")
+      topic_id = regex.findall(topic_url)[0]
+      if topic_id not in downloaded:
         posts.extend(getPostsFromTopic(base_url, topic_url))
         if len(posts) >= 500:
           writeOut(posts, foldername)
           posts = []
-      if topic_url in downloaded:
-        print "ignoring", topic_url, "because it is already scraped"
     writeOut(posts, foldername)
 
 if __name__ == "__main__":
