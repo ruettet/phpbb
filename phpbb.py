@@ -56,7 +56,7 @@ def getDownloadedTopicIDs(foldername):
 
 def getForumAndTopicName(html):
   """ from a page from a topic, fetch the forum and topic name """
-  soup = BeautifulSoup(html)
+  soup = BeautifulSoup(html, "html5lib")
   forumname = soup.find("fieldset", "jumpbox").find("option", 
                         attrs={"selected": "selected"}).text.strip()
   topicname = soup.find("h3", "first").find("a").text
@@ -69,7 +69,7 @@ def getForumAndTopicName(html):
 def getPostDivs(html):
   """ get divs in html that contain individual posts """
   try:
-    soup = BeautifulSoup(html)
+    soup = BeautifulSoup(html, "html5lib")
     return soup.find_all("div", "postbody")
   except:
     return []
@@ -91,7 +91,7 @@ def getStructuredData(post, base, url, forum, topic):
 def getProfileData(html, pid):
   """ get author profile data for post """
   out = {}
-  soup = BeautifulSoup(html)
+  soup = BeautifulSoup(html, "html5lib")
   pdataraw = soup.find("dl", attrs={"class": "postprofile", 
                                     "id": "profile" + pid.lstrip("p")})
   try:
@@ -177,7 +177,7 @@ def getPagesFromTopic(base, url):
   out = [url]
   html = getHtml(base + url.lstrip("."))
   try:
-    soup = BeautifulSoup(html)
+    soup = BeautifulSoup(html, "html5lib")
     hrefs = soup.find("div", "pagination").find_all("a")
     for href in hrefs:
       if url in href.get("href"):
@@ -218,7 +218,7 @@ def getTopicsFromSubforumpage(base, url):
     """ from a single page with topics in a subforum, get the topic links """
     out = []
     html = getHtml(base + url.lstrip("."))
-    soup = BeautifulSoup(html)
+    soup = BeautifulSoup(html, "html5lib")
     topicas = soup.find_all("a", "topictitle")
     for topica in topicas:
       out.append(topica.get("href"))
@@ -228,7 +228,7 @@ def getPagesFromSubforum(base, url):
   """ from the start page in a forum, get the links to all the pages """
   out = [url.lstrip(".")]
   html = getHtml(base + url.lstrip("."))
-  soup = BeautifulSoup(html)
+  soup = BeautifulSoup(html, "html5lib")
   try:
     hrefs = soup.find("div", "pagination").find_all("a")
   except:
@@ -259,7 +259,7 @@ def getPagesFromSubforum(base, url):
 def getSubforaFromForum(url):
   out = []
   html = getHtml(url)
-  soup = BeautifulSoup(html)
+  soup = BeautifulSoup(html, "html5lib")
   hrefs = soup.find_all("a", "forumtitle")
   for href in hrefs:
     out.append(href.get("href"))
