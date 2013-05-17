@@ -3,11 +3,6 @@
 # give it the start of a forum, and it will fetch all subfora                  
 # give it the start of a subforum, and it will fetch all the topics            
 # give it the start of a topic, and it will fetch all the posts                
-# TODO
-# - get subfora from forum
-# - continuation: if the script stops, it has to restart at the position where
-#   it left off
-# - standoff the xml generation to a separate method
 ################################################################################
 
 import urllib2, re, time, codecs, hashlib, os, httplib, glob, cgi
@@ -152,6 +147,9 @@ def getPostsFromPage(base, url):
   posts = getPostDivs(html)
   for post in posts:
     structdata = getStructuredData(post, base, url, forum, topic)
+    uniqueid = fullurl + structdata["id"]
+    pid = hashlib.sha224(uniqueid.encode("utf-8")).hexdigest()
+    structdata["pid"] = pid
     try:
       profiledata = getProfileData(html, structdata["id"])
       for key in profiledata.keys():
@@ -264,11 +262,11 @@ def main():
 #  base_url = "http://userbase.be/forum"
 #  base_url = "http://forum.phpbbservice.nl/"
 #  base_url = "http://www.twenot-forums.nl/"
-#  base_url = "http://www.pcwebplus.nl/phpbb/"
+  base_url = "http://www.pcwebplus.nl/phpbb/"
 #  base_url = "http://www.tandarts.nl/phpBB/index.php"
 #  base_url = "http://forum.windsurfing.nl/"
 #  base_url = "http://forum.gps.nl/"
-  base_url = "http://www.websitemaken.be/forum/"
+#  base_url = "http://www.websitemaken.be/forum/"
 #  http://www.mountainbike.nl/forum/ #(forumlink?)
 #  http://www.mozbrowser.nl/forum/ # (forumlink?)
 
@@ -288,7 +286,7 @@ def main():
       topic_id = regex.findall(topic_url)[0]
       if topic_id not in downloaded:
         posts.extend(getPostsFromTopic(base_url, topic_url))
-        if len(posts) >= 500:
+        if len(posts) >= 10:
           writeOut(posts, foldername)
           posts = []
     writeOut(posts, foldername)
