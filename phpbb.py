@@ -65,8 +65,11 @@ def getDownloadedTopicIDs(foldername):
 
 def getPostDivs(html):
   """ get divs in html that contain individual posts """
-  soup = BeautifulSoup(html)
-  return soup.find_all("div", "postbody")
+  try:
+    soup = BeautifulSoup(html)
+    return soup.find_all("div", "postbody")
+  except:
+    return []
 
 def getStructuredData(post, base, url, forum, topic):
   """ get postid, author, date and content from post html """
@@ -88,16 +91,19 @@ def getProfileData(html, pid):
   soup = BeautifulSoup(html)
   pdataraw = soup.find("dl", attrs={"class": "postprofile", 
                                     "id": "profile" + pid.lstrip("p")})
-  dds = pdataraw.find_all("dd")
-  for dd in dds:
-    try:
-      regexkey = re.compile("<strong>(.+)</strong>")
-      regexvalue = re.compile("</strong>(.+)</dd>")
-      key = regexkey.findall(unicode(dd))[0].strip().rstrip(":").lower()
-      value = regexvalue.findall(unicode(dd))[0].strip()
-      out[key] = value
-    except IndexError:
-      continue
+  try:
+    dds = pdataraw.find_all("dd")
+    for dd in dds:
+      try:
+        regexkey = re.compile("<strong>(.+)</strong>")
+        regexvalue = re.compile("</strong>(.+)</dd>")
+        key = regexkey.findall(unicode(dd))[0].strip().rstrip(":").lower()
+        value = regexvalue.findall(unicode(dd))[0].strip()
+        out[key] = value
+      except IndexError:
+        continue
+  except:
+    out = out
   return out
 
 def getAuthor(post):
@@ -152,6 +158,7 @@ def getPostsFromPage(base, url):
         structdata[key] = profiledata[key]
     except KeyError:
       print "\t\tno profile information for post"
+      continue
     out.append(structdata)
   return out
 
@@ -160,25 +167,28 @@ def getPagesFromTopic(base, url):
   # might need to be changed to look like getPagesFromForum
   out = [url]
   html = getHtml(base + url.lstrip("."))
-  soup = BeautifulSoup(html)
-  hrefs = soup.find("div", "pagination").find_all("a")
-  for href in hrefs:
-    if url in href.get("href"):
-      last_href = href.get("href")
-  # get start number from last_href
-  regex = re.compile("start=(\d+)")
   try:
-    final_start = int(regex.findall(last_href)[0])
+    soup = BeautifulSoup(html)
+    hrefs = soup.find("div", "pagination").find_all("a")
+    for href in hrefs:
+      if url in href.get("href"):
+        last_href = href.get("href")
+    # get start number from last_href
+    regex = re.compile("start=(\d+)")
+    try:
+      final_start = int(regex.findall(last_href)[0])
+    except:
+      final_start = -1
+    extra_url = url + "&start="
+    extra_start = 20 # assume the increment is 20
+    while extra_start < final_start:
+      out.append(extra_url + str(extra_start))
+      extra_start += 20
+    if final_start > 0:
+      out.append(extra_url + str(final_start))
+    return out
   except:
-    final_start = -1
-  extra_url = url + "&start="
-  extra_start = 20 # assume the increment is 20
-  while extra_start < final_start:
-    out.append(extra_url + str(extra_start))
-    extra_start += 20
-  if final_start > 0:
-    out.append(extra_url + str(final_start))
-  return out
+    return out
 
 ################################################################################
 # RETRIEVE TOPICS FROM SUBFORUM                                                #
@@ -251,10 +261,17 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-  base_url = "http://userbase.be/forum"
+#  base_url = "http://userbase.be/forum"
 #  base_url = "http://forum.phpbbservice.nl/"
-#  base_url = "https://forum.www.trosradar.nl/" # not working, https
 #  base_url = "http://www.twenot-forums.nl/"
+#  base_url = "http://www.pcwebplus.nl/phpbb/"
+#  base_url = "http://www.tandarts.nl/phpBB/index.php"
+#  base_url = "http://forum.windsurfing.nl/"
+#  base_url = "http://forum.gps.nl/"
+  base_url = "http://www.websitemaken.be/forum/"
+#  http://www.mountainbike.nl/forum/ #(forumlink?)
+#  http://www.mozbrowser.nl/forum/ # (forumlink?)
+
   foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
   downloaded = []
   try:
