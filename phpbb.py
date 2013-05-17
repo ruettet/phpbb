@@ -54,6 +54,14 @@ def getDownloadedTopicIDs(foldername):
     out.extend(regex.findall(xml))
   return list(set(out))
 
+def getForumAndTopicName(html):
+  """ from a page from a topic, fetch the forum and topic name """
+  soup = BeautifulSoup(html)
+  forumname = soup.find("fieldset", "jumpbox").find("option", 
+                        attrs={"selected": "selected"}).text.strip()
+  topicname = soup.find("h3", "first").find("a").text
+  return forumname, topicname
+
 ################################################################################
 # DEAL WITH INDIVIDUAL POSTS                                                   #
 ################################################################################
@@ -144,12 +152,15 @@ def getPostsFromPage(base, url):
   topic = re.compile("t=(\d+?)&").findall(url)[0]
   fullurl = base + url.lstrip(".")
   html = getHtml(fullurl)
+  (forumname, topicname) = getForumAndTopicName(html)
   posts = getPostDivs(html)
   for post in posts:
     structdata = getStructuredData(post, base, url, forum, topic)
     uniqueid = fullurl + structdata["id"]
     pid = hashlib.sha224(uniqueid.encode("utf-8")).hexdigest()
     structdata["pid"] = pid
+    structdata["forumname"] = forumname
+    structdata["topicname"] = topicname
     try:
       profiledata = getProfileData(html, structdata["id"])
       for key in profiledata.keys():
