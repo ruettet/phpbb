@@ -14,11 +14,15 @@ from xml.sax.saxutils import escape
 ################################################################################
 
 def getHtml(url):
-  req = urllib2.Request(url)
-  req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;'+
-    'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
-  resp = urllib2.urlopen(req)
-  content = resp.read()
+  content = ""
+  try:
+    req = urllib2.Request(url)
+    req.add_header('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; de;'+
+      'rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5')
+    resp = urllib2.urlopen(req)
+    content = resp.read()
+  except:
+    print "url", url, "not working"
   return content
 
 def xmlify_post(sd):
@@ -34,8 +38,12 @@ def xmlify_post(sd):
 def writeOut(posts, foldername):
   """ write out a portion of the posts to a file """
   xml = "<posts>\n"
+  pids = []
   for post in posts:
-    xml = xml + xmlify_post(post)
+    pid = post["pid"]
+    if pid not in pids:
+      xml = xml + xmlify_post(post)
+      pids.append(pid)
   xml = xml + "</posts>"
   fname = hashlib.sha224(xml.encode("utf-8")).hexdigest()
   print "\twriting to file:", foldername + "/" + fname
@@ -56,11 +64,14 @@ def getDownloadedTopicIDs(foldername):
 
 def getForumAndTopicName(html):
   """ from a page from a topic, fetch the forum and topic name """
-  soup = BeautifulSoup(html, "html5lib")
-  forumname = soup.find("fieldset", "jumpbox").find("option", 
-                        attrs={"selected": "selected"}).text.strip()
-  topicname = soup.find("h3", "first").find("a").text
-  return forumname, topicname
+  try:
+    soup = BeautifulSoup(html, "html5lib")
+    forumname = soup.find("fieldset", "jumpbox").find("option", 
+                          attrs={"selected": "selected"}).text.strip()
+    topicname = soup.find("h3", "first").find("a").text
+    return forumname, topicname
+  except:
+    return "", ""
 
 ################################################################################
 # DEAL WITH INDIVIDUAL POSTS                                                   #
@@ -156,19 +167,16 @@ def getPostsFromPage(base, url):
   posts = getPostDivs(html)
   for post in posts:
     structdata = getStructuredData(post, base, url, forum, topic)
-    uniqueid = fullurl + structdata["id"]
-    pid = hashlib.sha224(uniqueid.encode("utf-8")).hexdigest()
-    structdata["pid"] = pid
-    structdata["forumname"] = forumname
-    structdata["topicname"] = topicname
-    try:
+    if structdata:
+      uniqueid = fullurl + structdata["id"]
+      pid = hashlib.sha224(uniqueid.encode("utf-8")).hexdigest()
+      structdata["pid"] = pid
+      structdata["forumname"] = forumname
+      structdata["topicname"] = topicname
       profiledata = getProfileData(html, structdata["id"])
       for key in profiledata.keys():
         structdata[key] = profiledata[key]
-    except KeyError:
-      print "\t\tno profile information for post"
-      continue
-    out.append(structdata)
+      out.append(structdata)
   return out
 
 def getPagesFromTopic(base, url):
@@ -270,16 +278,7 @@ def getSubforaFromForum(url):
 ################################################################################
 
 def main():
-#  base_url = "http://userbase.be/forum"
-#  base_url = "http://forum.phpbbservice.nl/"
-#  base_url = "http://www.twenot-forums.nl/"
-  base_url = "http://www.pcwebplus.nl/phpbb/"
-#  base_url = "http://www.tandarts.nl/phpBB/index.php"
-#  base_url = "http://forum.windsurfing.nl/"
-#  base_url = "http://forum.gps.nl/"
-#  base_url = "http://www.websitemaken.be/forum/"
-#  http://www.mountainbike.nl/forum/ #(forumlink?)
-#  http://www.mozbrowser.nl/forum/ # (forumlink?)
+  base_url = "http://www.userbase.be/forum"
 
   foldername = hashlib.sha224(base_url.encode("utf-8")).hexdigest()
   downloaded = []
@@ -297,7 +296,7 @@ def main():
       topic_id = regex.findall(topic_url)[0]
       if topic_id not in downloaded:
         posts.extend(getPostsFromTopic(base_url, topic_url))
-        if len(posts) >= 10:
+        if len(posts) >= 50:
           writeOut(posts, foldername)
           posts = []
     writeOut(posts, foldername)
